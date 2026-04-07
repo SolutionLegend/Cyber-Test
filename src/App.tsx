@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'motion/react';
 export default function App() {
   const [view, setView] = React.useState<'landing' | 'quiz' | 'results'>('landing');
   const [loading, setLoading] = React.useState(false);
+  const [loadingMessage, setLoadingMessage] = React.useState("Consulting threat intelligence database...");
   const [error, setError] = React.useState<string | null>(null);
   const [history, setHistory] = React.useState<QuizHistory[]>([]);
   const [quizState, setQuizState] = React.useState<QuizState>({
@@ -30,6 +31,24 @@ export default function App() {
   React.useEffect(() => {
     setHistory(getQuizHistory());
   }, []);
+
+  React.useEffect(() => {
+    if (loading) {
+      const messages = [
+        "Consulting threat intelligence database...",
+        "Analyzing attack vectors...",
+        "Simulating breach scenarios...",
+        "Synthesizing technical challenges...",
+        "Finalizing exam environment..."
+      ];
+      let i = 0;
+      const interval = setInterval(() => {
+        i = (i + 1) % messages.length;
+        setLoadingMessage(messages[i]);
+      }, 1200);
+      return () => clearInterval(interval);
+    }
+  }, [loading]);
 
   const handleStartQuiz = async (category: Category, mode: 'Practice' | 'Exam', difficulty: Difficulty, questionCount: number) => {
     setLoading(true);
@@ -129,7 +148,7 @@ export default function App() {
               <Loader2 className="w-12 h-12 text-cyber-blue animate-spin" />
               <div className="text-center">
                 <h2 className="text-2xl font-bold mb-2">GENERATING EXAM SCENARIOS</h2>
-                <p className="text-gray-500 font-mono text-sm">Consulting threat intelligence database...</p>
+                <p className="text-gray-500 font-mono text-sm">{loadingMessage}</p>
               </div>
             </motion.div>
           ) : error ? (

@@ -1,32 +1,40 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { Category, Difficulty, Question } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export async function generateQuestions(category: Category, difficulty: Difficulty, count: number = 5): Promise<Question[]> {
-  const isMixed = category === 'Mixed Certification';
-  const prompt = `Generate ${count} professional cybersecurity exam questions at the ${difficulty} level.
-  ${isMixed 
-    ? "The questions MUST be a balanced mix of CompTIA Security+, Network+, Ethical Hacking, and general cybersecurity domains." 
-    : `The questions MUST be for the category: ${category}.`}
-  Each question MUST be a real-life scenario based on CompTIA or industry standards.
-  Focus on technical accuracy and professional terminology appropriate for the ${difficulty} level.
+  const CHUNK_SIZE = 10;
+  const numChunks = Math.ceil(count / CHUNK_SIZE);
+  const chunks: number[] = [];
   
-  Format the output as a JSON array of objects with the following structure:
-  {
-    "id": "unique-uuid",
-    "scenario": "A detailed real-world situation...",
-    "question": "The specific question based on the scenario...",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
-    "correctAnswer": 0, // index of the correct option
-    "explanation": "A detailed explanation of why the answer is correct and why others are wrong.",
-    "category": "The specific certification category this question belongs to",
-    "difficulty": "${difficulty}"
-  }`;
+  for (let i = 0; i < numChunks; i++) {
+    const remaining = count - (i * CHUNK_SIZE);
+    chunks.push(Math.min(CHUNK_SIZE, remaining));
+  }
 
-  try {
+  const fetchChunk = async (chunkCount: number): Promise<Question[]> => {
+    const isMixed = category === 'Mixed Certification';
+    const prompt = `Generate ${chunkCount} professional cybersecurity exam questions at the ${difficulty} level.
+    ${isMixed 
+      ? "Balanced mix of Security+, Network+, Ethical Hacking, and general cybersecurity domains." 
+      : `Category: ${category}.`}
+    Scenario-based, CompTIA/industry standards. Technical accuracy, professional terminology.
+    
+    JSON array:
+    {
+      "id": "unique-uuid",
+      "scenario": "string",
+      "question": "string",
+      "options": ["A", "B", "C", "D"],
+      "correctAnswer": 0,
+      "explanation": "string",
+      "category": "string",
+      "difficulty": "${difficulty}"
+    }`;
+
     const response = await ai.models.generateContent({
-      model: "gemini-3.1-pro-preview",
+      model: "gemini-flash-latest",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -55,8 +63,12 @@ export async function generateQuestions(category: Category, difficulty: Difficul
 
     const text = response.text;
     if (!text) throw new Error("No response from Gemini");
-    
     return JSON.parse(text) as Question[];
+  };
+
+  try {
+    const results = await Promise.all(chunks.map(chunkCount => fetchChunk(chunkCount)));
+    return results.flat();
   } catch (error) {
     console.error("Error generating questions:", error);
     throw error;
