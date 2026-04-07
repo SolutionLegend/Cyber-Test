@@ -109,6 +109,7 @@ export default function App() {
   };
 
   const handleHome = () => {
+    setError(null);
     setView('landing');
   };
 

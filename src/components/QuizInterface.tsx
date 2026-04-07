@@ -25,7 +25,9 @@ export default function QuizInterface({ questions, mode, onComplete }: QuizInter
       const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
       return () => clearInterval(timer);
     } else if (mode === 'Exam' && timeLeft === 0) {
-      handleFinish();
+      const finalAnswers = [...userAnswers];
+      finalAnswers[currentIndex] = selectedOption ?? -1;
+      handleFinish(finalAnswers);
     }
   }, [timeLeft, mode]);
 
